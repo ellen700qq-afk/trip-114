@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>順天國中114畢旅</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #f7f9fb; font-family: 'Helvetica Neue', sans-serif; }
+        /* 核心視覺：圓弧銜接 + 負邊距 (上次您喜歡的 App 感) */
+        .content-container { 
+            border-radius: 40px 40px 0 0; 
+            margin-top: -30px; 
+            background: white; 
+            padding-top: 30px; 
+            box-shadow: 0 -10px 30px rgba(0,0,0,0.1); 
+            min-height: 80vh;
+        }
+        /* 跑馬燈樣式 */
+        .marquee-container { background: white; border-bottom: 1px solid #eee; overflow: hidden; }
+        .marquee { color: red; font-weight: bold; white-space: nowrap; display: inline-block; padding-left: 100%; animation: marquee 20s linear infinite; }
+        @keyframes marquee { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
+        /* 導航按鈕樣式 */
+        .tab-btn { transition: all 0.3s; }
+        .tab-btn.active { background-color: rgba(255, 255, 255, 0.9); color: #3b82f6; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="marquee-container py-2">
+            <div class="marquee">⚡ 重要提醒：12/29 (一) 07:30 請準時於順天國中集合！請遵守團隊紀律，注意安全！</div>
+        </div>
+
+        <div class="relative h-[150px] w-full overflow-hidden">
+            <img src="底圖.jpg" class="w-full h-full object-cover" alt="Banner">
+            <div class="absolute bottom-6 right-6 flex gap-2 bg-black/10 backdrop-blur-md p-1 rounded-2xl">
+                <button @click="currentTab='schedule'" :class="['tab-btn px-4 py-2 rounded-xl text-white', currentTab === 'schedule' ? 'active' : '']">📅 行程</button>
+                <button @click="currentTab='info'" :class="['tab-btn px-4 py-2 rounded-xl text-white', currentTab === 'info' ? 'active' : '']">ℹ️ 資訊</button>
+            </div>
+        </div>
+
+        <main class="content-container pb-20">
+            <div class="px-6">
+                <h1 class="text-2xl font-bold text-slate-800 mb-6">順天國中114畢旅</h1>
+                
+                <div v-if="currentTab === 'schedule'" class="space-y-8">
+                    <div v-for="day in scheduleData" :key="day.day">
+                        <h2 class="text-lg font-bold text-blue-600 mb-4 border-l-4 border-blue-200 pl-3">{{day.dayTitle}}</h2>
+                        <div class="space-y-4">
+                            <div v-for="item in day.items" class="bg-white border border-slate-100 p-4 rounded-2xl shadow-sm">
+                                <span class="text-[10px] font-bold text-blue-400 bg-blue-50 px-2 py-1 rounded">{{item.time}}</span>
+                                <a v-if="item.link" :href="item.link" target="_blank" class="block mt-2 font-bold text-slate-800 hover:text-blue-600 underline">
+                                    {{item.name}}
+                                </a>
+                                <p v-else class="mt-2 font-bold text-slate-800">{{item.name}}</p>
+                                <p class="text-xs text-slate-500 mt-1">{{item.note}}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="currentTab === 'info'" class="space-y-4">
+                    <details class="group bg-blue-50 p-4 rounded-2xl cursor-pointer">
+                        <summary class="font-bold text-slate-800 list-none">📢 乘車資訊</summary>
+                        <p class="mt-2 text-sm text-slate-600">時間：12/29 (一) 07:30<br>地點：順天國中校園內</p>
+                    </details>
+                    <details class="group bg-pink-50 p-4 rounded-2xl cursor-pointer">
+                        <summary class="font-bold text-slate-800 list-none">🏨 悠活度假村</summary>
+                        <ul class="mt-2 text-sm text-slate-600 space-y-1 list-disc pl-4">
+                            <li>房卡感應閃綠燈後即可開啟。</li>
+                            <li>務必插入房卡方可通電。</li>
+                            <li>電話按9聯絡櫃檯。</li>
+                        </ul>
+                    </details>
+                    <details class="group bg-green-50 p-4 rounded-2xl cursor-pointer">
+                        <summary class="font-bold text-slate-800 list-none">🏨 富野渡假酒店</summary>
+                        <ul class="mt-2 text-sm text-slate-600 space-y-1 list-disc pl-4">
+                            <li>電梯需感應房卡。</li>
+                            <li>早餐位於飯店1樓。</li>
+                            <li>飲水機位置：1, 2, 5, 7樓。</li>
+                        </ul>
+                    </details>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+        createApp({
+            data() {
+                return {
+                    currentTab: 'schedule',
+                    scheduleData: [
+                        { dayTitle: '第一天 (12/29)', items: [
+                            {time: '09:30', name: '嘉義檜意森活村', link: 'https://www.hinokivillage.com.tw/index.php?lang=tw', note: '百年林業歷史文創園區'},
+                            {time: '09:30', name: '北門驛', link: 'https://www.chiayi.gov.tw/News_Content.aspx?n=512&s=216167', note: '阿里山森林鐵路起點'}
+                        ]},
+                        { dayTitle: '第二天 (12/30)', items: [
+                            {time: '10:00', name: '貓鼻頭風景區', link: 'https://www.ktnp.gov.tw/News_Content2.aspx?n=5C28A0E32DF925F9&sms=C88B5251F308CE96&s=9C8B9499841F2B1D', note: '豐富地質景觀與自然資源'}
+                        ]}
+                    ]
+                }
+            }
+        }).mount('#app')
+    </script>
+</body>
+</html>
