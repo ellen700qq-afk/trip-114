@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>順天國中114畢旅</title>
+    <!-- 引入 Vue 3 與 Tailwind CSS -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        
+        /* 延伸底圖背景色 - 淡色透明感 */
+        body { 
+            background-color: #f4f8f7; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* 手機版 App 容器，置中並限制最大寬度 */
+        .app-container {
+            max-width: 428px;
+            margin: 0 auto;
+            background-color: #f4f8f7;
+            min-height: 100vh;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
+            position: relative;
+        }
+
+        /* 跑馬燈樣式 */
+        .marquee { overflow: hidden; white-space: nowrap; }
+        .marquee p { 
+            display: inline-block; 
+            padding-left: 100%; 
+            animation: marquee 20s linear infinite; 
+            color: #ef4444; 
+            font-weight: bold; 
+            font-size: 0.85rem;
+        }
+        @keyframes marquee { 
+            0% { transform: translate(0, 0); } 
+            100% { transform: translate(-100%, 0); } 
+        }
+
+        /* 核心視覺：利用負邊距向上拉動重疊，創造圓弧銜接 */
+        .main-content {
+            border-radius: 30px 30px 0 0;
+            margin-top: -25px;
+            background: #f4f8f7;
+            padding: 24px 20px 80px 20px;
+            position: relative;
+            z-index: 10;
+            min-height: calc(100vh - 125px);
+        }
+
+        /* 隱藏滾動條但保留滑動功能 */
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* 卡片柔和陰影 */
+        .soft-shadow { box-shadow: 0 4px 15px rgba(0,0,0,0.03); }
+
+        /* 下拉選單箭頭動畫 */
+        details summary::-webkit-details-marker { display: none; }
+        details[open] summary .arrow-icon { transform: rotate(180deg); }
+    </style>
+</head>
+<body>
+
+    <div id="app" class="app-container">
+        
+        <!-- 最新提醒跑馬燈 -->
+        <div class="marquee bg-white py-2 border-b border-slate-100 relative z-20">
+            <p>⚡ 重要提醒：12/29 (一) 07:30 請準時集合！請遵守團隊紀律，注意自身安全，祝大家旅途愉快！</p>
+        </div>
+
+        <!-- 頁首 Banner (滿版, 高度150) -->
+        <div class="relative h-[150px] w-full overflow-hidden bg-slate-200">
+            <!-- 底圖檔名嚴格遵守使用者要求 -->
+            <img src="底圖.jpg" class="w-full h-full object-cover" alt="網頁底圖">
+            
+            <!-- 分頁 Tab 按鈕 (浮在圖片上方右下角) -->
+            <div class="absolute bottom-8 right-4 flex gap-2 bg-white/30 backdrop-blur-md p-1.5 rounded-2xl z-20 shadow-sm border border-white/40">
+                <button @click="currentTab = 'schedule'" :class="['flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all', currentTab === 'schedule' ? 'bg-white text-sky-600 shadow-sm' : 'text-slate-700 hover:bg-white/50']">
+                    📍 行程
+                </button>
+                <button @click="currentTab = 'info'" :class="['flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all', currentTab === 'info' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-700 hover:bg-white/50']">
+                    ℹ️ 資訊
+                </button>
+                <button @click="currentTab = 'notice'" :class="['flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all', currentTab === 'notice' ? 'bg-white text-rose-500 shadow-sm' : 'text-slate-700 hover:bg-white/50']">
+                    ⚠️ 注意
+                </button>
+            </div>
+        </div>
+
+        <!-- 主內容區域 -->
+        <main class="main-content">
+            
+            <!-- ==================== 分頁：每日行程表 ==================== -->
+            <div v-if="currentTab === 'schedule'" class="space-y-4 animate-[fadeIn_0.3s_ease-out]">
+                
+                <div class="flex justify-between items-end mb-2">
+                    <h1 class="text-xl font-bold text-slate-800 tracking-tight">順天國中114畢旅</h1>
+                    
+                    <!-- 行程分類下拉欄 -->
+                    <select v-model="selectedCategory" class="bg-white border border-slate-200/60 text-xs font-bold text-slate-500 rounded-xl px-2 py-1.5 outline-none shadow-sm">
+                        <option value="全部">全部行程</option>
+                        <option value="景點">📍 僅看景點</option>
+                        <option value="住宿">🏨 住宿/餐飲</option>
+                        <option value="其他">🚌 其他活動</option>
+                    </select>
+                </div>
+
+                <!-- 日期選單 (橫向滑動, 星期字體大於日期數字) -->
+                <div class="flex overflow-x-auto gap-3 py-1 hide-scrollbar">
+                    <button v-for="(day, index) in schedule" :key="index" @click="currentDay = index"
+                        :class="['flex flex-col items-center justify-center py-2 px-4 rounded-2xl border transition-all min-w-[70px]', 
+                        currentDay === index ? 'bg-sky-400 text-white border-sky-400 shadow-md scale-105' : 'bg-white text-slate-400 border-slate-100 hover:bg-slate-50']">
+                        <span class="text-sm font-black">{{ day.week }}</span>
+                        <span class="text-[10px] font-bold mt-1 opacity-90">{{ day.dateDisplay }}</span>
+                    </button>
+                </div>
+
+                <div class="mt-4 space-y-3">
+                    <div v-if="filteredItems.length === 0" class="text-center py-8 text-xs text-slate-400">
+                        此分類暫無行程安排
+                    </div>
+
+                    <div v-for="(item, idx) in filteredItems" :key="idx">
+                        <!-- 行程卡片 (日系淡色透明感) -->
+                        <div :class="['p-4 rounded-2xl border soft-shadow transition-all', 
+                            item.category === '景點' ? 'bg-sky-50/50 border-sky-100/50' : 
+                            item.category === '住宿' ? 'bg-emerald-50/50 border-emerald-100/50' : 'bg-pink-50/50 border-pink-100/50']">
+                            
+                            <div class="flex justify-between items-center mb-2">
+                                <!-- 抵達時間與交通時間整合在同一行 -->
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs font-black text-slate-700 bg-white/80 px-2 py-0.5 rounded shadow-sm">{{ item.time }}</span>
+                                    <span v-if="item.transitTime && item.transitTime !== '-'" class="text-[10px] font-bold text-slate-500">
+                                        🚗 車程約 {{ item.transitTime }}
+                                    </span>
+                                </div>
+                                
+                                <!-- 僅標記景點 -->
+                                <span v-if="item.category === '景點'" class="text-[10px] font-bold px-2 py-0.5 rounded-md text-sky-600 bg-sky-100/70">
+                                    景點
+                                </span>
+                            </div>
+
+                            <!-- 名稱 (景點設有超連結，新視窗開啟) -->
+                            <a v-if="item.link" :href="item.link" target="_blank" class="block text-base font-bold text-slate-800 hover:text-sky-600 hover:underline underline-offset-2 mb-1">
+                                {{ item.name }} 🔗
+                            </a>
+                            <p v-else class="text-base font-bold text-slate-800 mb-1">{{ item.name }}</p>
+
+                            <!-- 特色 & 備註 -->
+                            <p class="text-[11px] text-slate-500 font-medium leading-relaxed bg-white/60 p-2 rounded-xl mt-2">
+                                {{ item.note }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== 分頁：資訊 (乘車/住宿/參觀) ==================== -->
+            <div v-if="currentTab === 'info'" class="space-y-4 animate-[fadeIn_0.3s_ease-out]">
+                <h2 class="text-lg font-bold text-slate-800 mb-1">ℹ️ 活動資訊</h2>
+
+                <!-- 乘車資訊 (折疊卡片) -->
+                <details class="group bg-blue-50/50 border border-blue-100/50 rounded-2xl p-4 soft-shadow cursor-pointer outline-none">
+                    <summary class="font-bold text-slate-800 text-sm flex justify-between items-center list-none outline-none">
+                        <span class="flex items-center gap-1">🚌 乘車資訊</span>
+                        <span class="arrow-icon text-xs text-slate-400 transition-transform duration-300">▼</span>
+                    </summary>
+                    <div class="mt-3 text-xs text-slate-600 space-y-1 bg-white/60 p-3 rounded-xl border-t border-blue-100/30">
+                        <p><strong>時間：</strong>12月29日 (星期一) 上午 07:30</p>
+                        <p><strong>集合地點：</strong>順天國中校園內</p>
+                    </div>
+                </details>
+
+                <!-- 住宿資訊 1 (折疊卡片) -->
+                <details class="group bg-emerald-50/50 border border-emerald-100/50 rounded-2xl p-4 soft-shadow cursor-pointer outline-none">
+                    <summary class="font-bold text-slate-800 text-sm flex justify-between items-center list-none outline-none">
+                        <span class="flex items-center gap-1">🏨 悠活度假村</span>
+                        <span class="arrow-icon text-xs text-slate-400 transition-transform duration-300">▼</span>
+                    </summary>
+                    <div class="mt-3 text-xs text-slate-600 space-y-2 bg-white/60 p-3 rounded-xl border-t border-emerald-100/30">
+                        <ul class="list-decimal pl-4 space-y-1.5">
+                            <li>一間房間一張房卡，房卡於房門上感應待閃綠燈即可開啟。</li>
+                            <li>房門為自動鎖，關門即上鎖。</li>
+                            <li>請將房卡放入電盒，房間方可通電。</li>
+                            <li>飲水機位置於各棟的 2 樓。</li>
+                            <li>房間內電話按 <strong>9</strong> 可連絡飯店櫃檯。</li>
+                        </ul>
+                    </div>
+                </details>
+
+                <!-- 住宿資訊 2 (折疊卡片) -->
+                <details class="group bg-emerald-50/50 border border-emerald-100/50 rounded-2xl p-4 soft-shadow cursor-pointer outline-none">
+                    <summary class="font-bold text-slate-800 text-sm flex justify-between items-center list-none outline-none">
+                        <span class="flex items-center gap-1">🏨 富野渡假酒店</span>
+                        <span class="arrow-icon text-xs text-slate-400 transition-transform duration-300">▼</span>
+                    </summary>
+                    <div class="mt-3 text-xs text-slate-600 space-y-2 bg-white/60 p-3 rounded-xl border-t border-emerald-100/30">
+                        <ul class="list-decimal pl-4 space-y-1.5">
+                            <li>電梯為感應式，上樓請用房卡感應電梯才可使用。</li>
+                            <li>飯店櫃檯提供一次性備品販賣：盥洗組10元，一次性拖鞋50元。</li>
+                            <li>房門為自動鎖，關門即上鎖。</li>
+                            <li>請將房卡放入電盒，房間方可通電。</li>
+                            <li>早餐位置於飯店 1 樓。</li>
+                            <li>飲水機位置於：1樓大廳、2樓、5樓、7樓。</li>
+                            <li>房間內電話按 <strong>9 或 0</strong> 可連絡飯店櫃檯。</li>
+                        </ul>
+                    </div>
+                </details>
+
+                <!-- 參觀資訊：海生館 (折疊卡片) -->
+                <details class="group bg-sky-50/50 border border-sky-100/50 rounded-2xl p-4 soft-shadow cursor-pointer outline-none">
+                    <summary class="font-bold text-slate-800 text-sm flex justify-between items-center list-none outline-none">
+                        <span class="flex items-center gap-1">🐠 海生館參觀資訊</span>
+                        <span class="arrow-icon text-xs text-slate-400 transition-transform duration-300">▼</span>
+                    </summary>
+                    <div class="mt-3 text-xs text-slate-600 space-y-2 bg-white/60 p-3 rounded-xl border-t border-sky-100/30">
+                        <ul class="list-decimal pl-4 space-y-1.5">
+                            <li>入館請注意服裝儀容之整齊。</li>
+                            <li>請勿攜帶寵物、危險物品進入。</li>
+                            <li>展館內嚴禁使用閃光燈及拍打展示玻璃窗，以免生物受到驚嚇。</li>
+                            <li>請勿在餐廳及館內指定餐飲區以外之地區進食。</li>
+                            <li>請勿大聲喧嘩或使用擴音器，尊重他人的參觀品質。</li>
+                            <li>請勿餵食魚類。</li>
+                            <li>世界水域館極地區為配合企鵝的生態展示，該區域空調較低溫，請注意保暖。</li>
+                        </ul>
+                    </div>
+                </details>
+
+                <!-- 參觀資訊：劍湖山 (折疊卡片) -->
+                <details class="group bg-orange-50/50 border border-orange-100/50 rounded-2xl p-4 soft-shadow cursor-pointer outline-none">
+                    <summary class="font-bold text-slate-800 text-sm flex justify-between items-center list-none outline-none">
+                        <span class="flex items-center gap-1">🎡 劍湖山參觀資訊</span>
+                        <span class="arrow-icon text-xs text-slate-400 transition-transform duration-300">▼</span>
+                    </summary>
+                    <div class="mt-3 text-xs text-slate-600 space-y-2 bg-white/60 p-3 rounded-xl border-t border-orange-100/30">
+                        <ul class="list-decimal pl-4 space-y-1.5">
+                            <li>請以小隊為單位行動，避免落單。</li>
+                            <li>遊園過程如有身體不適請至領隊駐點站尋求協助。</li>
+                            <li>樂園內人潮眾多，切勿與他人發生衝突。</li>
+                            <li>請準時於集合時間抵達集合地點。</li>
+                            <li>用餐畢應休息半小時再繼續體驗設施。</li>
+                            <li>請視個人身體狀況，勿勉強挑戰過於刺激的設施。</li>
+                            <li>挑戰設施後若有不適，請暫停遊玩，找到領隊協助。</li>
+                            <li>勿慫恿或強迫他人體驗設施。</li>
+                            <li>乘坐設施口袋請清空，樂園內設施皆有防止掉落機制，若感應到異物，則設施立即停止。</li>
+                            <li>個人的貴重物品請務必隨身保管好。如不慎遺失請立即至最近的服務台登記，並找領隊協助。</li>
+                            <li>請記得帶礦泉水下車。</li>
+                            <li>如突發下雨請立即前往室內區域，部分設施會停止運作，以現場公告為主。</li>
+                            <li>搭乘手扶梯時，頭、手請勿伸出手扶梯外。</li>
+                            <li>如有購買照片，請記得提早取照。</li>
+                            <li>部分設施搭乘時不可攜帶包包，有臨時置物櫃供存放，離開設施時記得領取。</li>
+                        </ul>
+                    </div>
+                </details>
+            </div>
+
+            <!-- ==================== 分頁：注意事項 ==================== -->
+            <div v-if="currentTab === 'notice'" class="space-y-4 animate-[fadeIn_0.3s_ease-out]">
+                <h2 class="text-lg font-bold text-slate-800 mb-1">⚠️ 注意事項</h2>
+                <div class="bg-rose-50/50 border border-rose-100/50 rounded-2xl p-4 soft-shadow">
+                    <h3 class="font-bold text-rose-600 text-sm mb-2 flex items-center gap-1">🛡️ 安全與紀律規範</h3>
+                    <div class="text-xs text-slate-600 space-y-2 bg-white/60 p-2.5 rounded-xl">
+                        <ul class="list-disc pl-4 space-y-1.5">
+                            <li>請隨時注意自身安全，切勿擅自脫隊行動。</li>
+                            <li>重要物品及金錢請隨身攜帶妥善保管。</li>
+                            <li>遵守各景點及飯店之規定，維護校譽。</li>
+                            <li>如有身體不適，請立即告知隨車領隊或班級導師。</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+        createApp({
+            data() {
+                return {
+                    currentTab: 'schedule',
+                    currentDay: 0,
+                    selectedCategory: '全部',
+                    
+                    schedule: [
+                        {
+                            week: 'Mon', dateDisplay: '29',
+                            items: [
+                                { time: '07:40', name: '學校報到', category: '其他', transitTime: '20分鐘', note: '領隊準備集合學生、點名' },
+                                { time: '08:00', name: '學校啟程', category: '其他', transitTime: '1.5小時', note: '高速公路歡樂大出擊/途中休憩' },
+                                { time: '09:30', name: '嘉義檜意森活村 + 北門驛', category: '景點', link: 'https://www.hinokivillage.com.tw/index.php?lang=tw', transitTime: '2.5小時', note: '承載嘉義百年林業歷史的文創園區 / 阿里山森林鐵路的起點、市定古蹟' },
+                                { time: '12:00', name: '美味午餐', category: '住宿', transitTime: '1小時', note: '美味佳餚' },
+                                { time: '13:00', name: '驅車南下恆春', category: '其他', transitTime: '2小時', note: '~途經屏鵝濱海公路~' },
+                                { time: '15:00', name: '國立海洋生物博物館', category: '景點', link: 'https://www.nmmba.gov.tw/', transitTime: '30分鐘', note: '1) 臺灣水域館 2) 珊瑚王國 3) 世界水域館' },
+                                { time: '17:30', name: '豐盛晚餐', category: '住宿', transitTime: '20分鐘', note: '美味佳餚' },
+                                { time: '18:30', name: '入住悠活度假村', category: '住宿', transitTime: '10分鐘', note: 'CHECK IN 溫馨舒適小窩~' },
+                                { time: '19:00', name: '夜探星空', category: '其他', transitTime: '步行', note: '有機會欣賞到壯麗的星空和宇宙奧秘' },
+                                { time: '21:00', name: '(宿)墾丁悠活渡假村', category: '住宿', transitTime: '-', note: '洗澎澎..洗淨一天的疲勞+巡房+晚點名' }
+                            ]
+                        },
+                        {
+                            week: 'Tue', dateDisplay: '30',
+                            items: [
+                                { time: '06:30', name: '晨間活動', category: '其他', transitTime: '10分鐘', note: '熱情的陽光正召喚著' },
+                                { time: '07:00', name: '營養早餐', category: '住宿', transitTime: '10分鐘', note: '美味佳餚' },
+                                { time: '08:00', name: '悠活沙灘活動', category: '其他', transitTime: '20分鐘', note: '1) 沙灘活動 2) 沙灘躲避球 3) 淨灘活動' },
+                                { time: '10:00', name: '貓鼻頭風景區', category: '景點', link: 'https://www.ktnp.gov.tw/News_Content2.aspx?n=5C28A0E32DF925F9&sms=C88B5251F308CE96&s=9C8B9499841F2B1D', transitTime: '30分鐘', note: '典型的珊瑚礁海岸侵蝕地形、豐富的自然景觀' },
+                                { time: '12:00', name: '美味午餐', category: '住宿', transitTime: '40分鐘', note: '美味佳餚' },
+                                { time: '13:00', name: '驅車北上高雄', category: '其他', transitTime: '1.5小時', note: '~途經過港隧道~' },
+                                { time: '14:30', name: '旗津 (海岸公園/旗后砲台/老街)', category: '景點', link: 'https://khh.travel/zh-tw/attractions/detail/259/', transitTime: '10分鐘', note: '以海水浴場、觀海景觀步道等設計為主 / 探訪清末軍事建築歷史蹤跡 / 四面環海、漁獲豐富' },
+                                { time: '16:20', name: '搭乘旗津渡輪', category: '其他', transitTime: '20分鐘', note: '走訪古蹟老街的觀光交通渡輪' },
+                                { time: '17:40', name: '夢時代購物廣場', category: '景點', link: 'https://www.dreammall.com.tw/', transitTime: '30分鐘', note: '以「夢想」為名，建構空間。(晚餐於商場內自理)' },
+                                { time: '20:00', name: '入住最舒適之酒店', category: '住宿', transitTime: '15分鐘', note: 'CHECK IN 溫馨舒適小窩~' },
+                                { time: '21:00', name: '(宿)高雄富野渡假酒店', category: '住宿', transitTime: '-', note: '洗澎澎..洗淨一天的疲勞+巡房+晚點名' }
+                            ]
+                        },
+                        {
+                            week: 'Wed', dateDisplay: '31',
+                            items: [
+                                { time: '06:30', name: '晨間活動', category: '其他', transitTime: '10分鐘', note: '熱情的陽光正召喚著' },
+                                { time: '07:00', name: '營養早餐', category: '住宿', transitTime: '15分鐘', note: '美味佳餚' },
+                                { time: '08:00', name: '驅車北上雲林', category: '其他', transitTime: '2.5小時', note: '~欣賞國道風光~' },
+                                { time: '10:40', name: '劍湖山世界', category: '景點', link: 'https://www.janfusun.com.tw/index.php', transitTime: '4小時', note: '驚險刺激的童樂世界！1) 博物館 2) 影城區 3) 摩天廣場 <午餐提供西式餐盒>' },
+                                { time: '15:30', name: '快樂賦歸、珍重再見', category: '其他', transitTime: '返校', note: '快樂歸抵學校~可愛的家 (預計 18:00 前到達)' }
+                            ]
+                        }
+                    ]
+                };
+            },
+            computed: {
+                filteredItems() {
+                    const currentDayItems = this.schedule[this.currentDay].items;
+                    if (this.selectedCategory === '全部') {
+                        return currentDayItems;
+                    }
+                    return currentDayItems.filter(item => item.category === this.selectedCategory);
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
